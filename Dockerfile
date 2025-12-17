@@ -48,7 +48,8 @@ USER ${USERNAME}
 
 # 4) Install mise (runtime version manager)
 RUN curl https://mise.run | sh && \
-    echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
+    echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc && \
+    mkdir -p ~/.local/share/mise
 
 # 5) Create entrypoint script that activates mise and installs tools
 RUN printf '#!/bin/bash\neval "$(~/.local/bin/mise activate bash)"\nif [ -f /workspace/.mise.toml ]; then mise install; fi\nexec "$@"\n' > ~/.entrypoint.sh && \

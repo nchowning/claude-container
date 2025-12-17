@@ -12,7 +12,7 @@ Docker dev container for running Claude Code CLI in isolated Ubuntu 24.04 enviro
 make build
 ```
 
-Run via shell alias mounting config, mise cache, and project dir.
+Run via shell function mounting config and project dir.
 
 ## Container Stack
 
@@ -29,10 +29,10 @@ Run via shell alias mounting config, mise cache, and project dir.
 - Entrypoint: `dumb-init` → `claude`
 - Auto-updater, telemetry, error reporting disabled
 
-## Volume Mounts (via shell alias)
+## Volume Mounts (via shell function)
 
 - `~/.claude` → config/state persistence
 - `~/.claude.json` → preferences/OAuth
 - `~/.gitconfig` → git config
-- `~/.local/share/mise` → tool cache (Go, Python, etc.)
-- `$(pwd)` → `/workspace`
+- `claude-mise-<project>-<hash>` → per-project tool cache (Docker named volume)
+- `$PWD` → `/workspace`
