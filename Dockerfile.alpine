@@ -22,7 +22,10 @@ RUN apk add --no-cache \
     ripgrep
 
 # 2) Non-root user with passwordless sudo
-RUN addgroup -g ${USER_GID} ${USERNAME} && \
+#    node:alpine has node user/group at 1000, remove first
+RUN deluser --remove-home node 2>/dev/null || true && \
+    delgroup node 2>/dev/null || true && \
+    addgroup -g ${USER_GID} ${USERNAME} && \
     adduser -u ${USER_UID} -G ${USERNAME} -h /home/${USERNAME} -s /bin/bash -D ${USERNAME} && \
     echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-nopasswd && \
     chmod 0440 /etc/sudoers.d/90-nopasswd
