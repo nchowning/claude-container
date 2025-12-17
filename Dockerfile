@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     locales \
     sudo \
     dumb-init \
+    ripgrep \
  && rm -rf /var/lib/apt/lists/*
  
 # Set UTF-8 locale (helps many CLIs and editors)
@@ -40,7 +41,11 @@ RUN mkdir -p /etc/apt/keyrings && \
 # Optional: enable corepack so you can use pnpm/yarn if needed
 RUN corepack enable || true
  
-# 3) Non-root user with passwordless sudo (handy for dev containers)
+# 3) Go 1.25.5
+RUN rm -rf /usr/local/go && \
+    curl -fsSL https://go.dev/dl/go1.25.5.linux-amd64.tar.gz | tar -C /usr/local -xz
+
+# 4) Non-root user with passwordless sudo (handy for dev containers)
 RUN userdel ubuntu
 RUN groupadd --gid ${USER_GID} ${USERNAME} && \
     useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} && \
@@ -54,13 +59,16 @@ USER ${USERNAME}
 #   `docker build --build-arg CACHEBUST=$(date +%s)`
 ARG CACHEBUST=1
  
-# 4) (Optional) Install a claude-code CLI if it’s published on npm.
+# 5) (Optional) Install a claude-code CLI if it's published on npm.
 # If you have a private tarball or repo, replace this with the proper install step.
 # The fallback "|| true" keeps the image buildable even if the package name differs.
 # Example:
 RUN npm install -g @anthropic-ai/claude-code --prefix ~/.local || true
  
-ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+ENV PATH="/home/${USERNAME}/.local/bin:/home/${USERNAME}/go/bin:/usr/local/go/bin:${PATH}"
+ENV DISABLE_AUTOUPDATER=1
+ENV DISABLE_TELEMETRY=1
+ENV DISABLE_ERROR_REPORTING=1
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["claude"]
