@@ -1,0 +1,120 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      claude_version:
+        description: 'Claude Code CLI version (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: yesimnathan/claude
+
+jobs:
+  build-apt:
+    name: Build ${{ matrix.base.tag }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        base:
+          - image: ubuntu:24.04
+            tag: ubuntu-24.04
+            alias: ubuntu
+            is_default: true
+          - image: debian:trixie
+            tag: debian-13
+            alias: debian
+            is_default: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract CLI version for tags
+        id: cli
+        run: |
+          VERSION="${{ inputs.claude_version || 'latest' }}"
+          if [ "$VERSION" != "latest" ]; then
+            echo "suffix=-cli-${VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ matrix.base.tag }}${{ steps.cli.outputs.suffix }}
+            type=raw,value=${{ matrix.base.alias }}${{ steps.cli.outputs.suffix }}
+            type=raw,value=latest,enable=${{ matrix.base.is_default }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            BASE_IMAGE=${{ matrix.base.image }}
+            CLAUDE_CODE_VERSION=${{ inputs.claude_version || 'latest' }}
+            CACHEBUST=${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-alpine:
+    name: Build alpine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract CLI version for tags
+        id: cli
+        run: |
+          VERSION="${{ inputs.claude_version || 'latest' }}"
+          if [ "$VERSION" != "latest" ]; then
+            echo "suffix=-cli-${VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=alpine${{ steps.cli.outputs.suffix }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.alpine
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            CLAUDE_CODE_VERSION=${{ inputs.claude_version || 'latest' }}
+            CACHEBUST=${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

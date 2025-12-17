@@ -1,6 +1,8 @@
-FROM ubuntu:24.04
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG CLAUDE_CODE_VERSION=latest
 ARG USERNAME=claude
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -37,7 +39,7 @@ RUN mkdir -p /etc/apt/keyrings && \
 RUN corepack enable || true
 
 # 3) Non-root user with passwordless sudo
-RUN userdel ubuntu
+RUN userdel ubuntu 2>/dev/null || true
 RUN groupadd --gid ${USER_GID} ${USERNAME} && \
     useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} && \
     usermod -aG sudo ${USERNAME} && \
@@ -59,7 +61,7 @@ RUN printf '#!/bin/bash\neval "$(~/.local/bin/mise activate bash)"\nif [ -f /wor
 ARG CACHEBUST=1
 
 # 6) Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code --prefix ~/.local || true
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} --prefix ~/.local || true
 
 ENV PATH="/home/${USERNAME}/.local/share/mise/shims:/home/${USERNAME}/.local/bin:${PATH}"
 ENV MISE_TRUSTED_CONFIG_PATHS=/workspace
