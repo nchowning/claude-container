@@ -43,13 +43,15 @@ Add to `~/.bashrc` or `~/.zshrc`:
 ```bash
 claude() {
   local mise_vol="claude-mise-$(basename "$PWD")-$(echo "$PWD" | sha256sum | cut -c1-8)"
+  local image="${CLAUDE_CONT_IMAGE:-yesimnathan/claude}"
+  local tag="${CLAUDE_CONT_TAG:-latest}"
   docker run --rm -it \
     -v ~/.claude:/home/claude/.claude \
     -v ~/.claude.json:/home/claude/.claude.json \
     -v ~/.gitconfig:/home/claude/.gitconfig \
     -v "$mise_vol":/home/claude/.local/share/mise \
     -v "$PWD":/workspace \
-    yesimnathan/claude:latest "$@"
+    "${image}:${tag}" "$@"
 }
 
 # First run: authenticate via browser
@@ -57,6 +59,13 @@ claude
 
 # Subsequent runs: use from any project directory
 cd ~/myproject && claude
+
+# Use different base image
+CLAUDE_CONT_TAG=alpine claude
+CLAUDE_CONT_TAG=debian-13 claude
+
+# Test local build
+CLAUDE_CONT_IMAGE=claude-code CLAUDE_CONT_TAG=dev claude
 ```
 
 ## What's Included
@@ -101,6 +110,64 @@ node = "22"
 1. **Container startup**: If `.mise.toml` exists, mise installs tools before claude starts (~30-60s first time)
 2. **Subsequent runs**: Tools cached in per-project Docker volume, near-instant startup
 3. **Cross-platform**: Named volumes work on Linux/macOS/Windows - no binary compatibility issues
+
+## Headless / Autonomous Mode
+
+For "fire and forget" tasks like implementing a design doc:
+
+```bash
+# Foreground - blocks terminal, see output live
+danger-claude() {
+  local mise_vol="claude-mise-$(basename "$PWD")-$(echo "$PWD" | sha256sum | cut -c1-8)"
+  local image="${CLAUDE_CONT_IMAGE:-yesimnathan/claude}"
+  local tag="${CLAUDE_CONT_TAG:-latest}"
+  docker run --rm -t \
+    -v ~/.claude:/home/claude/.claude \
+    -v ~/.claude.json:/home/claude/.claude.json \
+    -v ~/.gitconfig:/home/claude/.gitconfig \
+    -v "$mise_vol":/home/claude/.local/share/mise \
+    -v "$PWD":/workspace \
+    "${image}:${tag}" claude --dangerously-skip-permissions -p --verbose "$*"
+}
+
+# Background via tmux - detached session with logging
+danger-claude-tmux() {
+  local mise_vol="claude-mise-$(basename "$PWD")-$(echo "$PWD" | sha256sum | cut -c1-8)"
+  local image="${CLAUDE_CONT_IMAGE:-yesimnathan/claude}"
+  local tag="${CLAUDE_CONT_TAG:-latest}"
+  local logfile="${PWD}/claude-$(date +%Y%m%d-%H%M%S).log"
+  local session="claude-$$"
+
+  tmux new-session -d -s "$session" \
+    "docker run --rm -it \
+      -v ~/.claude:/home/claude/.claude \
+      -v ~/.claude.json:/home/claude/.claude.json \
+      -v ~/.gitconfig:/home/claude/.gitconfig \
+      -v \"$mise_vol\":/home/claude/.local/share/mise \
+      -v \"$PWD\":/workspace \
+      \"${image}:${tag}\" claude --dangerously-skip-permissions -p --verbose '$*' 2>&1 | tee '$logfile'"
+
+  echo "tmux session: $session"
+  echo "Log: $logfile"
+  echo "Attach: tmux attach -t $session"
+  echo "Watch:  tail -f $logfile"
+}
+```
+
+Usage:
+
+```bash
+mkdir my-cool-project && cd my-cool-project
+vim DESIGN.md
+
+# Foreground
+danger-claude "Implement DESIGN.md completely. Don't ask questions."
+
+# Background (tmux)
+danger-claude-tmux "Implement DESIGN.md completely. Don't ask questions."
+tail -f claude-*.log        # watch progress
+tmux attach -t claude-*     # attach to session
+```
 
 ## Container Details
 
