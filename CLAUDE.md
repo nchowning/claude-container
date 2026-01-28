@@ -17,10 +17,9 @@ Run via shell function mounting config and project dir.
 ## Container Stack
 
 - Ubuntu 24.04 base
-- Node.js 20.x LTS (via NodeSource)
 - mise (runtime version manager)
 - ripgrep, build-essential
-- Claude Code CLI (`@anthropic-ai/claude-code`)
+- Claude Code CLI (native installer)
 
 ## Container Runtime
 

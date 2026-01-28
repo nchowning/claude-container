@@ -2,7 +2,6 @@ ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG CLAUDE_CODE_VERSION=latest
 ARG USERNAME=claude
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -29,16 +28,7 @@ RUN sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
-# 2) Node.js LTS (required for Claude Code CLI)
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN corepack enable || true
-
-# 3) Non-root user with passwordless sudo
+# 2) Non-root user with passwordless sudo
 RUN userdel ubuntu 2>/dev/null || true
 RUN groupadd --gid ${USER_GID} ${USERNAME} && \
     useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} && \
@@ -48,22 +38,22 @@ RUN groupadd --gid ${USER_GID} ${USERNAME} && \
 WORKDIR /workspace
 USER ${USERNAME}
 
-# 4) Install mise (runtime version manager)
+# 3) Install mise (runtime version manager)
 RUN curl https://mise.run | sh && \
     echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc && \
     mkdir -p ~/.local/share/mise
 
-# 5) Create entrypoint script that activates mise and installs tools
+# 4) Create entrypoint script that activates mise and installs tools
 RUN printf '#!/bin/bash\neval "$(~/.local/bin/mise activate bash)"\nif [ -f /workspace/.mise.toml ]; then mise install; fi\nexec "$@"\n' > ~/.entrypoint.sh && \
     chmod +x ~/.entrypoint.sh
 
 # Cache bust arg for rebuilding from this point
 ARG CACHEBUST=1
 
-# 6) Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} --prefix ~/.local || true
+# 5) Install Claude Code CLI (native installer)
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
-ENV PATH="/home/${USERNAME}/.local/share/mise/shims:/home/${USERNAME}/.local/bin:${PATH}"
+ENV PATH="/home/${USERNAME}/.local/bin:/home/${USERNAME}/.local/share/mise/shims:${PATH}"
 ENV MISE_TRUSTED_CONFIG_PATHS=/workspace
 ENV DISABLE_AUTOUPDATER=1
 ENV DISABLE_TELEMETRY=1

@@ -10,30 +10,10 @@ Docker container for running [Claude Code](https://claude.ai/code) CLI in an iso
 docker pull yesimnathan/claude:latest
 ```
 
-Available tags:
-| Tag | Base | Notes |
-|-----|------|-------|
-| `latest`, `ubuntu`, `ubuntu-24.04` | Ubuntu 24.04 | Default |
-| `debian`, `debian-13` | Debian Trixie | |
-| `alpine` | Alpine (node:20-alpine) | Smallest image |
-
-Version-pinned tags (when built with specific CLI version):
-- `ubuntu-24.04-cli-0.2.50`
-- `alpine-cli-0.2.50`
-
 ### Option 2: Build locally
 
 ```bash
-# Default (Ubuntu 24.04)
 make build
-
-# Specific base image
-make build-ubuntu
-make build-debian
-make build-alpine
-
-# Pin CLI version
-make build CLAUDE_VERSION=0.2.50
 ```
 
 ### Run via shell function
@@ -59,22 +39,15 @@ claude
 
 # Subsequent runs: use from any project directory
 cd ~/myproject && claude
-
-# Use different base image
-CLAUDE_CONT_TAG=alpine claude
-CLAUDE_CONT_TAG=debian-13 claude
-
-# Test local build
-CLAUDE_CONT_IMAGE=claude-code CLAUDE_CONT_TAG=dev claude
 ```
 
 ## What's Included
 
-- Node.js 20.x LTS
+- Ubuntu 24.04
 - [mise](https://mise.jdx.dev/) (runtime version manager)
 - ripgrep
-- build-essential / build-base
-- Claude Code CLI
+- build-essential
+- Claude Code CLI (native installer)
 
 ## Per-Project Tools with mise
 
@@ -182,6 +155,6 @@ tmux attach -t claude-*     # attach to session
 Images are automatically built and pushed to Docker Hub on:
 - Push to `main`
 - Git tags (`v*`)
-- Manual workflow dispatch (with optional CLI version)
+- Manual workflow dispatch
 
 Multi-arch: `linux/amd64` and `linux/arm64`
