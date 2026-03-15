@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     locales \
     sudo \
     dumb-init \
+    jq \
     ripgrep \
  && rm -rf /var/lib/apt/lists/*
 
